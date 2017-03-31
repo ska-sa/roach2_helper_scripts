@@ -10,6 +10,7 @@ import logging
 import socket
 import time
 import datetime
+import re
 
 
 # ================================================================
@@ -239,10 +240,12 @@ class MySSH:
                     # In the future this could be made to work more like
                     # pexpect with pattern matching.
 
-                    #If highligted 'lines' found in ouput, send space to the pty 
+                    #If 'lines 1-45' found in ouput, send space to the pty 
                     #to trigger the next page of output. This is needed if 
                     #more that 24 lines are sent (default pty height)
-                    if repr(output).find('x1b[7mlines ') > -1:
+                    pattern = re.compile('lines \d+-\d+')
+
+                    if re.search(pattern, output):
                         session.send(' ')
                     elif input_idx < len(input_data):
                         data = input_data[input_idx] + '\n'
@@ -297,7 +300,9 @@ if __name__ == '__main__':
              via command line or listed in a config file, command line overrides
              config file if config file is specified. If no output filename is
              specified the executed command and a timestamp will be used as the output
-             filename."""
+             filename. If more than one command is listed on the command line or
+             in the config file and an output filename is specified only the last
+             result will be saved."""
     parser = OptionParser(description=desc)
     parser.set_usage('%prog [options]')
     parser.add_option('-r', '--run_command', type=str, default=None,
@@ -387,6 +392,13 @@ if __name__ == '__main__':
             else:
                 in_str = in_str[:strt_idx] + in_str[end_idx:]
         return in_str.replace('\r','')
+    
+    def rem_extra_chars(in_str):
+        pat = re.compile('lines \d+-\d+ ')
+        in_str = re.sub(pat, '', in_str)
+        pat = re.compile('lines \d+-\d+\/\d+ \(END\) ')
+        in_str = re.sub(pat, '', in_str)
+        return in_str.replace('\r','')
 
     def run_cmd(ssh_list, cmd, indata=None, enable=False, filename=None):
         '''
@@ -406,6 +418,7 @@ if __name__ == '__main__':
             outf = open("{}_{}.txt".format(cmd_name, timestr), "w")
         
         prn_cmd = cmd
+        cmd = 'terminal type dumb\n'+cmd
         if enable:
             cmd = 'enable\n'+cmd
 
@@ -417,7 +430,7 @@ if __name__ == '__main__':
             outf.write('status  : %d' % (status) + '\n')
             outf.write('output  : %d bytes' % (len(output)) + '\n')
             outf.write('='*64 + '\n')
-            fixed_out = rem_esc_seq(output)
+            fixed_out = rem_extra_chars(output)
             outf.write('{}'.format(fixed_out))
             print fixed_out
         outf.close()
