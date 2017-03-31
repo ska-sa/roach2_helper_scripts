@@ -20,7 +20,7 @@ foreach roach $roachlist {
     send {cd /etc}
     send "\r"
     expect {/usr/etc #}
-    set rc [eval exec grep 'pwm1_enable' [glob *]]
+    #set rc [eval exec grep 'pwm1_enable' [glob *]]
     set rc ""
     if {$rc == ""} {
         send {sed -i '$a#Set FPGA fan to maximum' rc.local}
