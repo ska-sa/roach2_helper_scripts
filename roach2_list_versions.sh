@@ -1,14 +1,14 @@
 #!/usr/bin/expect -f
 
 set ignore [lindex $argv]
-set totbrds [exec cat /var/lib/misc/dnsmasq.leases | grep roach | wc -l]
+set totbrds [exec cat /var/lib/misc/dnsmasq.leases | grep 020 | wc -l]
 send_user "\r\n\r\nFound $totbrds ROACHs\r\n"
 
 
 set brdcnt 0
 send_user "\r\n\r\nListing all U-BOOT versions...\r\n"
 
-set roaches [exec cat /var/lib/misc/dnsmasq.leases | grep roach | cut -d " " -f4]
+set roaches [exec cat /var/lib/misc/dnsmasq.leases | grep roach020 | cut -d " " -f4]
 set roachlist [split $roaches "\n"]
 set versions ""
 foreach roach $roachlist {
@@ -34,9 +34,11 @@ foreach roach $roachlist {
         set start [string first "kernel version" $detail]
         set end [string first \n $detail $start]
 	    set kernel [string range $detail $start+29 $end]
-	    append versions "$brdcnt $roach:\n\tU-Boot Version: $ver\n\tKernel Version: $kernel\tRootFS Version: $romfs"
-
+	    append versions "$roach:\n\tU-Boot Version: $ver\n\tKernel Version: $kernel\tRootFS Version: $romfs"
+    } else {
+        append versions "Skipping $roach\n"
     }
+    
 }
 puts "\n\n$versions"
 

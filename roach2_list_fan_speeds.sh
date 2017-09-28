@@ -42,12 +42,15 @@ set roachlist [split $roaches "\n"]
 #if { [lindex $argv 0] == "-d" } {
     puts "\nChecking divisors on all ROACHs..."
     foreach roach $roachlist {
+        set fpga [get_fan_speed r2hwmond.fan.fpga $roach]
+	sleep 0.2
         set chs0 [get_fan_speed r2hwmond.fan.chs0 $roach]
 	sleep 0.2
         set chs1 [get_fan_speed r2hwmond.fan.chs1 $roach]
 	sleep 0.2
         set chs2 [get_fan_speed r2hwmond.fan.chs2 $roach]
 	sleep 0.2
+	check_div $fpga $roach "hwmon5"
         check_div $chs0 $roach "hwmon6"
         check_div $chs1 $roach "hwmon7"
         check_div $chs2 $roach "hwmon8"
@@ -56,12 +59,15 @@ set roachlist [split $roaches "\n"]
 
 puts "Getting fan speeds..."
 foreach roach $roachlist {
+    set fpga [get_fan_speed r2hwmond.fan.fpga $roach]
+    sleep 0.2
     set chs0 [get_fan_speed r2hwmond.fan.chs0 $roach]
     sleep 0.2
     set chs1 [get_fan_speed r2hwmond.fan.chs1 $roach]
     sleep 0.2
     set chs2 [get_fan_speed r2hwmond.fan.chs2 $roach]
     sleep 0.2
+    puts "Roach $roach FPGA    fan   speed = $fpga"
     puts "Roach $roach chassis fan 0 speed = $chs0"
     puts "Roach $roach chassis fan 1 speed = $chs1"
     puts "Roach $roach chassis fan 2 speed = $chs2"
