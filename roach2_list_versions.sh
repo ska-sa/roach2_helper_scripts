@@ -34,7 +34,7 @@ foreach roach $roachlist {
         set start [string first "kernel version" $detail]
         set end [string first \n $detail $start]
 	    set kernel [string range $detail $start+29 $end]
-	    append versions "$roach:\n\tU-Boot Version: $ver\n\tKernel Version: $kernel\tRootFS Version: $romfs"
+	    append versions "$brdcnt $roach:\n\tU-Boot Version: $ver\n\tKernel Version: $kernel\tRootFS Version: $romfs"
 
     }
 }
