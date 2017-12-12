@@ -281,6 +281,7 @@ if __name__ == '__main__':
     import sys,os,re,string
     from optparse import OptionParser
     import ConfigParser
+    from multiprocessing.pool import ThreadPool
 
     desc = """This programs connects to Mellanox switches via SSH and runs commands.
              The output is written to a file. The hosts and commands can be passed
@@ -344,8 +345,10 @@ if __name__ == '__main__':
 
     if opts.hostnames:
         hosts = opts.hostnames.split(',')
+        print hosts
     if opts.run_command:
         cmds = opts.run_command.split(',')
+        print cmds
     if opts.enable:
         enable=True
     if opts.loglevel:
@@ -389,7 +392,7 @@ if __name__ == '__main__':
         in_str = re.sub(pat, '', in_str)
         return in_str.replace('\r','')
 
-    def run_cmd(ssh_list, cmd, indata=None, enable=False, filename=None):
+    def run_cmd(ssh_obj, cmd, indata=None, enable=False):
         '''
         Run a command with optional input.
 
@@ -398,41 +401,55 @@ if __name__ == '__main__':
         @returns The command exit status and output.
                  Stdout and stderr are combined.
         '''
+
+        prn_cmd = cmd
+        cmd = 'terminal type dumb\n'+cmd
+        if enable:
+            cmd = 'enable\n'+cmd
+        output = ''
+        output += ('\n'+'='*64 + '\n')
+        output += ('host    : ' + ssh_obj.hostname + '\n')
+        output += ('command : ' + prn_cmd + '\n')
+        status, outp = ssh_obj.run(cmd, indata, timeout=30)
+        output += ('status  : %d' % (status) + '\n')
+        output += ('output  : %d bytes' % (len(output)) + '\n')
+        output += ('='*64 + '\n')
+        outp = rem_extra_chars(outp)
+        output += outp
+        return output
+
+    ssh_list = [0]*len(hosts)
+    thread_obj = [0]*len(hosts)
+    pool = ThreadPool(processes=len(hosts))
+    for i,host in enumerate(hosts):
+        print host
+        thread_obj[i] = pool.apply_async(ssh_conn, args=(host,))
+    for i,host in enumerate(hosts):
+        ssh_list[i] = thread_obj[i].get()
+
+    print ('SSH connections established')
+    ret = [0]*len(hosts)
+    for cmd in cmds:
+
         timestr = time.strftime("%Y_%m_%d-%H_%M")
-        if filename:
-            outf = open(filename, "w")
+        if opts.out:
+            outf = open(opts.out, "w")
         else:
             pattern = re.compile('[\W_]+') 
             cmd_name = pattern.sub('_', cmd) 
             outf = open("{}_{}.txt".format(cmd_name, timestr), "w")
         
-        prn_cmd = cmd
-        cmd = 'terminal type dumb\n'+cmd
-        if enable:
-            cmd = 'enable\n'+cmd
-
-        for ssh_obj in ssh_list:
-            output = ''
-            output += ('\n'+'='*64 + '\n')
-            output += ('host    : ' + ssh_obj.hostname + '\n')
-            output += ('command : ' + prn_cmd + '\n')
-            status, outp = ssh_obj.run(cmd, indata, timeout=30)
-            output += ('status  : %d' % (status) + '\n')
-            output += ('output  : %d bytes' % (len(output)) + '\n')
-            output += ('='*64 + '\n')
-            outp = rem_extra_chars(outp)
-            output += outp
-            outf.write(output)
-            print output
+        for i,ssh_obj in enumerate(ssh_list):
+            thread_obj[i] = pool.apply_async(run_cmd, args=(ssh_obj,cmd), kwds={'enable':'enable'})
+        for i,ssh_obj in enumerate(ssh_list):
+            ret[i] = thread_obj[i].get()
+        for val in ret:
+            outf.write(val)
+            print val
         outf.close()
 
-    ssh_list = []
-    for host in hosts:
-        ssh_list.append(ssh_conn(host))
+    print ('Closing SSH connections')
+    for i,ssh_obj in enumerate(ssh_list):
+        thread_obj[i] = pool.apply_async(ssh_obj.ssh.close)
 
-    for cmd in cmds:
-        run_cmd(ssh_list,cmd, enable=enable, filename=opts.out)
-
-    for ssh_obj in ssh_list:
-        ssh_obj.ssh.close()
 
