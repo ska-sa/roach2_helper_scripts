@@ -445,7 +445,10 @@ if __name__ == '__main__':
             ret[i] = thread_obj[i].get()
         for val in ret:
             outf.write(val)
+            outf.write('\n\n')
             print val
+            print
+            print
         outf.close()
 
     print ('Closing SSH connections')
